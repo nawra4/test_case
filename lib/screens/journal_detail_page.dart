@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/journal_service.dart';
 import 'edit_journal_page.dart';
 
-class JournalDetailPage extends StatelessWidget {
+class JournalDetailPage extends StatefulWidget {
   final String journalId;
   final String title;
   final String content;
@@ -10,169 +9,137 @@ class JournalDetailPage extends StatelessWidget {
   final String time;
 
   const JournalDetailPage({
-    super.key,
+    Key? key,
     required this.journalId,
     required this.title,
     required this.content,
     required this.date,
     required this.time,
-  });
+  }) : super(key: key);
+
+  @override
+  State<JournalDetailPage> createState() => _JournalDetailPageState();
+}
+
+class _JournalDetailPageState extends State<JournalDetailPage> {
+  late String _title;
+  late String _content;
+
+  @override
+  void initState() {
+    super.initState();
+    _title = widget.title;
+    _content = widget.content;
+  }
+
+  Future<void> _editJournal() async {
+    final updated = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditJournalPage(
+          journalId: widget.journalId,
+          journal: {
+            'id': widget.journalId,
+            'title': _title,
+            'content': _content,
+            'date': widget.date,
+            'time': widget.time,
+          },
+        ),
+      ),
+    );
+
+    if (updated != null) {
+      setState(() {
+        _title = updated['title'] ?? _title;
+        _content = updated['content'] ?? _content;
+      });
+      // kirim balik ke Home juga biar sinkron
+      Navigator.pop(context, {
+        'id': widget.journalId,
+        'title': _title,
+        'content': _content,
+        'date': widget.date,
+        'time': widget.time,
+      });
+    }
+  }
+
+    void _deleteJournal() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Hapus Jurnal"),
+        content: const Text("Apakah kamu yakin ingin menghapus jurnal ini?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      Navigator.pop(context, {
+        'id': widget.journalId,
+        'deleted': true,
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F9F7),
       appBar: AppBar(
         title: const Text("Detail Jurnal"),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
         actions: [
-          TextButton.icon(
-            onPressed: () async {
-              final updated = await Navigator.push<Map<String, dynamic>>(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EditJournalPage(
-                    journalId: journalId,
-                    initialTitle: title,
-                    initialContent: content,
-                  ),
-                ),
-              );
-
-              if (updated != null) {
-                Navigator.pop(context, updated); // Kirim updated data ke HomeScreen
-              }
-            },
-            icon: const Icon(Icons.edit, color: Colors.grey, size: 20),
-            label: const Text(
-              "Edit",
-              style: TextStyle(color: Colors.grey),
-            ),
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: _editJournal,
           ),
-          TextButton.icon(
-            onPressed: () {
-              _showDeleteDialog(context);
-            },
-            icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-            label: const Text(
-              "Hapus",
-              style: TextStyle(color: Colors.red),
-            ),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: _deleteJournal,
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Card
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_title,
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(widget.date,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(widget.time,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        Text(date, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                        const SizedBox(width: 20),
-                        const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        Text(time, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                      ],
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 20),
+              Text(
+                _content,
+                style: const TextStyle(fontSize: 16),
               ),
-            ),
-            const SizedBox(height: 20),
-            // Content Card
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    content,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black87,
-                      height: 1.6,
-                      letterSpacing: 0.3,
-                    ),
-                  )
-                ),
-                ),
-              ),
-          ],
-        ))
+            ],
+          ),
+        ),
+      ),
     );
-}
-  void _showDeleteDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text("Hapus Jurnal"),
-        content: const Text("Apakah Anda yakin ingin menghapus jurnal ini?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context), // Close dialog
-            child: const Text("Batal"),
-          ),
-          TextButton(
-            onPressed: () async {
-              // Panggil delete terlebih dahulu
-              final success = await JournalService.deleteJournal(journalId);
-
-              if (!context.mounted) return; // Pastikan context masih valid
-
-              Navigator.pop(context); // Tutup dialog
-
-              if (success) {
-                // Kirim info ke HomeScreen bahwa jurnal terhapus
-                Navigator.pop(context, {'deleted': true});
-              } else {
-                // Opsional: tampilkan error jika gagal hapus
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Gagal menghapus jurnal."),
-                  ),
-                );
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text("Hapus"),
-          ),
-        ],
-      );
-    },
-  );
-}
+  }
 }

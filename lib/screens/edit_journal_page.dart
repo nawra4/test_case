@@ -1,123 +1,105 @@
 import 'package:flutter/material.dart';
-import '../services/journal_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../blocs/journal/journal_bloc.dart';
+import '../blocs/journal/journal_event.dart';
+import '../blocs/journal/journal_state.dart';
 
 class EditJournalPage extends StatefulWidget {
   final String journalId;
-  final String initialTitle;
-  final String initialContent;
+  final Map<String, dynamic> journal;
 
   const EditJournalPage({
-    super.key,
+    Key? key,
     required this.journalId,
-    required this.initialTitle,
-    required this.initialContent,
-  });
+    required this.journal,
+  }) : super(key: key);
 
   @override
   State<EditJournalPage> createState() => _EditJournalPageState();
 }
 
 class _EditJournalPageState extends State<EditJournalPage> {
-  late TextEditingController titleController;
-  late TextEditingController contentController;
-  bool isSaving = false;
+  late TextEditingController _titleController;
+  late TextEditingController _contentController;
 
   @override
   void initState() {
     super.initState();
-    titleController = TextEditingController(text: widget.initialTitle);
-    contentController = TextEditingController(text: widget.initialContent);
+    _titleController = TextEditingController(
+        text: widget.journal['title']?.toString() ?? '');
+    _contentController = TextEditingController(
+        text: widget.journal['content']?.toString() ?? '');
   }
 
   @override
   void dispose() {
-    titleController.dispose();
-    contentController.dispose();
+    _titleController.dispose();
+    _contentController.dispose();
     super.dispose();
   }
 
-  Future<void> _saveJournal() async {
-    setState(() => isSaving = true);
+  void _onSavePressed() {
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
 
-    final updatedData = {
-      'title': titleController.text,
-      'content': contentController.text,
-    };
-
-    final success =
-        await JournalService.updateJournal(widget.journalId, updatedData);
-
-    setState(() => isSaving = false);
-
-    if (success && context.mounted) {
-      Navigator.pop(context, updatedData); // kirim data balik
+    if (title.isEmpty || content.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Judul dan konten tidak boleh kosong')),
+      );
+      return;
     }
+
+    context.read<JournalBloc>().add(UpdateJournal(
+          id: widget.journalId,
+          title: title,
+          content: content,
+        ));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Edit Jurnal"),
-        backgroundColor: Colors.teal[700],
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+    return BlocListener<JournalBloc, JournalState>(
+      listener: (context, state) {
+        if (state is JournalLoaded) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Jurnal berhasil diperbarui')),
+          );
+          Navigator.pop(context);
+        } else if (state is JournalError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message)),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Edit Jurnal'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'Judul'),
               ),
-              elevation: 3,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Judul',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: contentController,
-                      decoration: const InputDecoration(
-                        labelText: 'Isi Jurnal',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 10,
-                      keyboardType: TextInputType.multiline,
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _contentController,
+                maxLines: 8,
+                decoration: const InputDecoration(labelText: 'Konten'),
               ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isSaving ? null : _saveJournal,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal[700],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: isSaving
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        "Simpan Perubahan",
-                        style: TextStyle(fontSize: 16),
-                      ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _onSavePressed,
+                child: const Text('Simpan Perubahan'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

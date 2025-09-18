@@ -4,29 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 class JournalStorageService {
   static const String _journalKey = 'journals';
 
-  // Simpan list jurnal ke local storage
   static Future<void> saveJournals(List<Map<String, dynamic>> journals) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final journalString = jsonEncode(journals);
-      await prefs.setString(_journalKey, journalString);
-    } catch (e) {
-      print('Error saving journals: $e');
-    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_journalKey, jsonEncode(journals));
   }
 
-  // Ambil list jurnal dari local storage
   static Future<List<Map<String, dynamic>>> getJournals() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final journalString = prefs.getString(_journalKey);
-      
-      if (journalString != null && journalString.isNotEmpty) {
-        final List<dynamic> decoded = jsonDecode(journalString);
-        return decoded.map((item) => Map<String, dynamic>.from(item)).toList();
-      }
-    } catch (e) {
-      print('Error getting journals: $e');
+    final prefs = await SharedPreferences.getInstance();
+    final journalString = prefs.getString(_journalKey);
+    if (journalString != null && journalString.isNotEmpty) {
+      final List<dynamic> decoded = jsonDecode(journalString);
+      return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
     }
     return [];
   }

@@ -11,7 +11,7 @@ class EditProfilePage extends StatefulWidget {
     super.key,
     required this.username,
     required this.email,
-    this.profileImage,
+    this.profileImage, required String name,
   });
 
   @override

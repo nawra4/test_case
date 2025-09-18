@@ -4,12 +4,12 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = "http://127.0.0.1:8000/api";
+    static const String baseUrl = "http://10.0.2.2:8000/api";
 
   // SAVE TOKEN
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("token", token);
+    await prefs.setString('auth_token', token);
   }
 
   // SAVE USER DATA
@@ -30,7 +30,7 @@ class ApiService {
 
   // REGISTER
   static Future<Map<String, dynamic>> register(
-      String username, String email, String password) async {
+      String username, String email, String password, String confirmPassword) async {
     final response = await http.post(
       Uri.parse("$baseUrl/register"),
       headers: {
@@ -41,7 +41,7 @@ class ApiService {
         "username": username,
         "email": email,
         "password": password,
-        "password_confirmation": password,
+        "password_confirmation": confirmPassword,
       }),
     );
 
@@ -59,30 +59,37 @@ class ApiService {
 
   // LOGIN
   static Future<Map<String, dynamic>> login(
-      String email, String password) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/login"),
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "email": email,
-        "password": password,
-      }),
-    );
+    String email, String password) async {
+  final response = await http.post(
+    Uri.parse("$baseUrl/login"),
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    },
+    body: jsonEncode({
+      "email": email,
+      "password": password,
+    }),
+  );
 
-    final data = jsonDecode(response.body);
+  final data = jsonDecode(response.body);
 
-    if (response.statusCode == 200 && data['token'] != null) {
-      await saveToken(data['token']);
-      if (data['user'] != null) {
-        await saveUser(data['user']);
-      }
+  if (response.statusCode == 200) {
+    final token = data['token'] ??
+        data['data']?['token'] ??
+        data['access_token'];
+
+    if (token != null) {
+      await saveToken(token);
     }
 
-    return data;
+    if (data['user'] != null) {
+      await saveUser(data['user']);
+    }
   }
+
+  return data;
+}
 
   // GET TOKEN
   static Future<String?> getToken() async {
@@ -93,7 +100,7 @@ class ApiService {
   // LOGOUT
   static Future<void> logout() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+    await prefs.remove('auth_token'); // konsisten
     await prefs.remove('user_data');
   }
 
